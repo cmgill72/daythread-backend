@@ -4,7 +4,6 @@ export function normalizeE164(number) {
   if (typeof number !== 'string') return null;
   const cleaned = number.replace(/[\s().-]/g, '');
   if (/^\+[1-9]\d{7,14}$/.test(cleaned)) return cleaned;
-  // Convenience for US numbers; do not guess country codes for other formats.
   if (/^\d{10}$/.test(cleaned)) return '+1' + cleaned;
   if (/^1\d{10}$/.test(cleaned)) return '+' + cleaned;
   return null;
@@ -35,4 +34,18 @@ export function parseDateRange(from, to) {
 
 export function parseAllowedRecipients(value) {
   return new Set((value || '').split(',').map(v => normalizeE164(v)).filter(Boolean));
+}
+
+export function parseMessageIds(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 500) return null;
+  if (!value.every(id => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) return null;
+  return [...new Set(value)];
+}
+
+export function parseDeviceRegistration(body) {
+  const token = body?.token;
+  const environment = body?.environment;
+  if (typeof token !== 'string' || !/^[a-f0-9]{64,200}$/i.test(token)) return null;
+  if (!['sandbox','production'].includes(environment)) return null;
+  return { token: token.toLowerCase(), environment };
 }
