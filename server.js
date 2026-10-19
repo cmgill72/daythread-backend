@@ -14,6 +14,8 @@ if (missing.length) {
 
 const fromNumber = normalizeE164(env.TWILIO_FROM_NUMBER);
 const allowedRecipients = parseAllowedRecipients(env.ALLOWED_RECIPIENTS);
+// The 2026 Twilio free trial permits only fixed templates, not custom SMS replies.
+const trialMode = env.DAYTHREAD_TRIAL_MODE === 'true';
 const baseURL = env.PUBLIC_BASE_URL.replace(/\/+$/, '');
 if (!fromNumber || !baseURL.startsWith('https://') || !allowedRecipients.size || env.DAYTHREAD_APP_TOKEN.length < 32) {
   console.error('Invalid configuration: requires valid E.164 sender/allowlist, HTTPS public origin, and app token of at least 32 characters.');
@@ -90,6 +92,7 @@ app.post('/v1/messages', async (req, res) => {
   const destination = normalizeE164(req.body?.to);
   const body = normalizeBody(req.body?.body);
   if (!destination || !body) return res.status(400).json({ error: 'Provide an E.164 phone number and a message (1–1200 characters).' });
+  if (trialMode) return res.status(409).json({ error: 'Trial mode: custom outgoing SMS is unavailable with Twilio’s 30-day trial. Incoming messages are supported; use DayThread Demo Mode to practice replies. Upgrade Twilio, complete applicable messaging registration, then set DAYTHREAD_TRIAL_MODE=false.' });
   if (destination === fromNumber) return res.status(400).json({ error: 'Cannot send to the DayThread number itself.' });
   if (!allowedRecipients.has(destination)) return res.status(403).json({ error: 'Recipient is not on your approved test list.' });
   const now = Date.now();
